@@ -2,12 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- A tag viewport foi removida propositalmente para não adaptar a tela em celulares -->
     <title>Espelho Meu - Agendamento</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            /* Força a largura mínima de um monitor padrão de computador */
             min-width: 1200px; 
             background-color: #f4f6f9;
         }
@@ -38,19 +36,19 @@
 </head>
 <body>
 
-<!-- Cabeçalho (Header) -->
+<!-- cabeçalho -->
 <nav class="navbar navbar-expand navbar-dark bg-dark py-3">
     <div class="container d-flex justify-content-between align-items-center">
-        <a class="navbar-brand fw-bold fs-4" href="#">🪞 Espelho Meu</a>
+        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
         <div class="d-flex">
             <a href="#" class="btn btn-outline-light me-3 px-4">Minha Agenda</a>
-            <a href="#" class="btn btn-light fw-bold px-4">👤 Entrar</a>
+            <a href="login.html" class="btn btn-light fw-bold px-4">👤 Entrar</a>
         </div>
     </div>
 </nav>
 
 <div class="container mt-5">
-    <!-- Área de Busca Rápida (Hero Section) -->
+    <!-- hero section -->
     <div class="hero-section text-center shadow-sm">
         <h1 class="fw-bolder mb-3">✨ Bem-vinda(o) ao seu momento de cuidado ✨</h1>
         <p class="lead text-muted mb-5">Encontre os melhores profissionais e agende seu horário sem complicação.</p>
@@ -73,9 +71,9 @@
         </div>
     </div>
 
-    <!-- Vitrine de Profissionais e Horários (Cards) -->
+    <!-- profissionais -->
     <div class="d-flex justify-content-between align-items-end mb-4">
-        <h3 class="fw-bold m-0"> Horários disponíveis hoje</h3>
+        <h3 class="fw-bold m-0">Horários disponíveis hoje</h3>
         <span class="text-muted">Mostrando resultados para: <strong>Todos os serviços</strong></span>
     </div>
 
@@ -84,18 +82,18 @@
         <div class="col-4 mb-4">
             <div class="card h-100 shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h4 class="card-title fw-bold"> Juliana Silva</h4>
+                    <h4 class="card-title fw-bold">Juliana Silva</h4>
                     <h6 class="card-subtitle mb-4 text-primary fw-semibold">Especialidade: Manicure</h6>
                     <p class="mb-2 fw-bold text-dark">Próximos horários:</p>
-                    <div class="d-flex flex-wrap">
-                        <button class="btn btn-outline-primary btn-sm time-btn">14:00</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">15:30</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">17:00</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">18:30</button>
+                    <div class="d-flex flex-wrap time-container">
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">14:00</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">15:30</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">17:00</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">18:30</button>
                     </div>
                 </div>
                 <div class="card-footer bg-white border-top-0 p-4 pt-0">
-                    <button class="btn btn-success w-100 fw-bold py-2">Agendar</button>
+                    <a href="confirmacao.html" class="btn btn-success w-100 fw-bold py-2 text-center text-decoration-none">Agendar</a>
                 </div>
             </div>
         </div>
@@ -104,16 +102,16 @@
         <div class="col-4 mb-4">
             <div class="card h-100 shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h4 class="card-title fw-bold"> Roberto Carlos</h4>
+                    <h4 class="card-title fw-bold">Roberto Carlos</h4>
                     <h6 class="card-subtitle mb-4 text-primary fw-semibold">Especialidade: Cabeleireiro</h6>
                     <p class="mb-2 fw-bold text-dark">Próximos horários:</p>
-                    <div class="d-flex flex-wrap">
-                        <button class="btn btn-outline-primary btn-sm time-btn">16:00</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">18:00</button>
+                    <div class="d-flex flex-wrap time-container">
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">16:00</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">18:00</button>
                     </div>
                 </div>
                 <div class="card-footer bg-white border-top-0 p-4 pt-0">
-                    <button class="btn btn-success w-100 fw-bold py-2">Agendar</button>
+                    <a href="confirmacao.html" class="btn btn-success w-100 fw-bold py-2 text-center text-decoration-none">Agendar</a>
                 </div>
             </div>
         </div>
@@ -122,17 +120,17 @@
         <div class="col-4 mb-4">
             <div class="card h-100 shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h4 class="card-title fw-bold"> Ana Paula</h4>
+                    <h4 class="card-title fw-bold">Ana Paula</h4>
                     <h6 class="card-subtitle mb-4 text-primary fw-semibold">Especialidade: Maquiagem</h6>
                     <p class="mb-2 fw-bold text-dark">Próximos horários:</p>
-                    <div class="d-flex flex-wrap">
-                        <button class="btn btn-outline-primary btn-sm time-btn">10:00</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">11:30</button>
-                        <button class="btn btn-outline-primary btn-sm time-btn">14:15</button>
+                    <div class="d-flex flex-wrap time-container">
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">10:00</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">11:30</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm time-btn">14:15</button>
                     </div>
                 </div>
                 <div class="card-footer bg-white border-top-0 p-4 pt-0">
-                    <button class="btn btn-success w-100 fw-bold py-2">Agendar</button>
+                    <a href="confirmacao.html" class="btn btn-success w-100 fw-bold py-2 text-center text-decoration-none">Agendar</a>
                 </div>
             </div>
         </div>
@@ -144,6 +142,25 @@
         <small>© 2026 Espelho Meu - Sistema de Agendamento. Projeto GPMS.</small>
     </div>
 </footer>
+
+<script>
+    // Lógica para selecionar o horário em azul dentro de cada card
+    document.querySelectorAll('.card').forEach(card => {
+        const timeButtons = card.querySelectorAll('.time-btn');
+        timeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove a seleção de todos os botões do mesmo card
+                timeButtons.forEach(b => {
+                    b.classList.remove('btn-primary', 'active');
+                    b.classList.add('btn-outline-primary');
+                });
+                // Aplica o preenchimento azul no botão
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary', 'active');
+            });
+        });
+    });
+</script>
 
 </body>
 </html>
