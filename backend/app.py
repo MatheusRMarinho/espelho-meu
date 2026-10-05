@@ -19,6 +19,7 @@ def cadastrar_cliente():
             telefone=dados.get('telefone', ''),
             email=dados['email']
         )
+        novo_cliente.definir_senha(dados['senha'])
         db.session.add(novo_cliente)
         db.session.commit()
         return jsonify({"mensagem": "Cliente cadastrado!", "id": novo_cliente.id}), 201
@@ -31,6 +32,27 @@ def listar_clientes():
     clientes = Cliente.query.all()
     resultado = [{"id": c.id, "nome": c.nome, "telefone": c.telefone, "email": c.email} for c in clientes]
     return jsonify(resultado), 200
+
+
+# rota login
+@app.route('/login', methods=['POST'])
+def login():
+    dados = request.get_json(silent=True) or {}
+    email = dados.get('email', '').strip()
+    senha = dados.get('senha', '')
+
+    if not email or not senha:
+        return jsonify({"erro": "Informe e-mail e senha."}), 400
+
+    cliente = Cliente.query.filter_by(email=email).first()
+    # Mesma mensagem para e-mail inexistente e senha errada, para não revelar quais e-mails existem
+    if cliente is None or not cliente.verificar_senha(senha):
+        return jsonify({"erro": "E-mail ou senha inválidos."}), 401
+
+    return jsonify({
+        "mensagem": "Login realizado com sucesso!",
+        "cliente": {"id": cliente.id, "nome": cliente.nome, "email": cliente.email}
+    }), 200
 
 
 # rotas profissional
