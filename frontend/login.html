@@ -34,10 +34,8 @@
 
 <nav class="navbar navbar-expand navbar-dark bg-dark py-3">
     <div class="container d-flex justify-content-between align-items-center" style="width: 1140px;">
-        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
-        <div class="d-flex">
-            <a href="index.html" class="btn btn-outline-light px-4">Voltar ao Início</a>
-        </div>
+        <a class="navbar-brand fw-bold fs-4">🪞 Espelho Meu</a>
+        
     </div>
 </nav>
 
@@ -48,24 +46,54 @@
             <p class="text-muted">Faça login para gerenciar seus agendamentos.</p>
         </div>
         
-        <form>
+        <form id="form-login">
             <div class="mb-3">
                 <label class="form-label fw-bold">E-mail</label>
-                <input type="email" class="form-control form-control-lg border-primary" placeholder="seu@email.com">
+                <input type="email" id="email" class="form-control form-control-lg border-primary" placeholder="seu@email.com" required>
             </div>
             <div class="mb-4">
                 <label class="form-label fw-bold">Senha</label>
-                <input type="password" class="form-control form-control-lg border-primary" placeholder="••••••••">
+                <input type="password" id="senha" class="form-control form-control-lg border-primary" placeholder="••••••••" required>
             </div>
             
-<a href="index.html" class="btn btn-primary btn-lg w-100 fw-bold mb-3">Entrar</a>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mb-3">Entrar</button>
             
-            <div class="text-center">
-                <a href="#" class="text-decoration-none text-muted">Esqueci minha senha</a>
-            </div>
+            <div class="text-center mt-3">
+    <a href="#" class="text-decoration-none text-muted d-block mb-2">Esqueci minha senha</a>
+    <span class="text-muted">Ainda não tem uma conta? </span>
+    <a href="cadastro-clientes.html" class="text-decoration-none fw-bold text-primary">Cadastre-se</a>
+</div>
         </form>
     </div>
 </div>
+
+<script>
+    document.getElementById('form-login').addEventListener('submit', async function(evento) {
+        evento.preventDefault(); 
+        
+        const dadosLogin = {
+            email: document.getElementById('email').value,
+            senha: document.getElementById('senha').value
+        };
+
+        try {
+            const resposta = await fetch('http://localhost:5000/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosLogin)
+            });
+
+            if (resposta.ok) {
+                alert('Login aprovado!');
+                window.location.href = 'index.html'; 
+            } else {
+                alert('E-mail ou senha incorretos. Tente novamente.');
+            }
+        } catch (erro) {
+            alert('Erro de conexão. A API está rodando?');
+        }
+    });
+</script>
 
 </body>
 </html>

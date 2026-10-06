@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from datetime import datetime, time
 from models import db, Cliente, Profissional, Servico, Agendamento
+from flask_cors import CORS
 
 app = Flask(__name__)
 
@@ -9,7 +10,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://postgres:postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
-
+CORS(app)
 # rotas cliente
 @app.route('/clientes', methods=['POST'])
 def cadastrar_cliente():
