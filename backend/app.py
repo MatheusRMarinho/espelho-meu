@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from datetime import datetime, time
 from models import db, Cliente, Profissional, Servico, Agendamento
 from flask_cors import CORS
+from datetime import datetime, time, timedelta
 
 app = Flask(__name__)
 
@@ -113,8 +114,69 @@ def listar_servicos():
     ]
     return jsonify(resultado), 200
 
+# rotas de agendamento
+@app.route('/agendamentos', methods=['POST'])
+def criar_agendamento():
+    dados = request.get_json() or {}
+    
+    cliente_id = dados.get('cliente_id')
+    profissional_id = dados.get('profissional_id')
+    servico_id = dados.get('servico_id')
+    data_hora_str = dados.get('dataHora') # Formato esperado: "2026-10-10T14:00:00"
 
+    if not all([cliente_id, profissional_id, servico_id, data_hora_str]):
+        return jsonify({"erro": "Campos obrigatórios: cliente_id, profissional_id, servico_id, dataHora"}), 400
 
+    try:
+        data_hora_inicio = datetime.fromisoformat(data_hora_str)
+    except ValueError:
+        return jsonify({"erro": "Formato de dataHora inválido. Use formato ISO (ex: YYYY-MM-DDTHH:MM:SS)."}), 400
+
+    # Busca o serviço para consultar a duração
+    servico = db.session.get(Servico, servico_id)
+    if not servico:
+        return jsonify({"erro": "Serviço não encontrado."}), 404
+
+    data_hora_fim = data_hora_inicio + timedelta(minutes=servico.duracaoEmMinutos)
+
+    # Implementação do RNF-008: Validação de conflito de agenda do profissional
+    agendamentos_existentes = Agendamento.query.filter(
+        Agendamento.profissional_id == profissional_id,
+        Agendamento.status != 'Cancelado'
+    ).all()
+
+    for ag in agendamentos_existentes:
+        existente_inicio = ag.dataHora
+        existente_fim = existente_inicio + timedelta(minutes=ag.servico.duracaoEmMinutos)
+
+        # Validação da sobreposição de horários
+        if data_hora_inicio < existente_fim and data_hora_fim > existente_inicio:
+            return jsonify({
+                "erro": "Horário indisponível. O profissional já possui um atendimento nesse intervalo."
+            }), 409
+
+    try:
+        novo_agendamento = Agendamento(
+            cliente_id=cliente_id,
+            profissional_id=profissional_id,
+            servico_id=servico_id,
+            dataHora=data_hora_inicio,
+            status='Agendado'
+        )
+        db.session.add(novo_agendamento)
+        db.session.commit()
+
+        return jsonify({
+            "mensagem": "Agendamento realizado com sucesso!",
+            "id": novo_agendamento.id,
+            "dataHora": novo_agendamento.dataHora.isoformat()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"erro": f"Erro interno ao agendar: {str(e)}"}), 400
+
+    
 # rotas agenda
 @app.route('/agenda', methods=['GET'])
 def consultar_agenda():
