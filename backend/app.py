@@ -133,7 +133,7 @@ def criar_agendamento():
         return jsonify({"erro": "Formato de dataHora inválido. Use formato ISO (ex: YYYY-MM-DDTHH:MM:SS)."}), 400
 
     # Busca o serviço para consultar a duração
-    servico = Servico.query.get(servico_id)
+    servico = db.session.get(Servico, servico_id)
     if not servico:
         return jsonify({"erro": "Serviço não encontrado."}), 404
 
