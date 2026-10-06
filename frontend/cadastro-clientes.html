@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Espelho Meu - Cadastro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-width: 1200px; 
+            background-color: #f4f6f9;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .cadastro-container {
+            width: 1140px;
+            margin: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+        }
+        .cadastro-card {
+            background-color: #ffffff;
+            padding: 3rem;
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+            width: 100%;
+            max-width: 450px;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand navbar-dark bg-dark py-3">
+    <div class="container d-flex justify-content-between align-items-center" style="width: 1140px;">
+        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
+        <div class="d-flex">
+            <a href="index.html" class="btn btn-outline-light px-4">Voltar ao Início</a>
+        </div>
+    </div>
+</nav>
+
+<div class="cadastro-container">
+    <div class="cadastro-card shadow-sm">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">Criar Conta</h2>
+            <p class="text-muted">Preencha seus dados para se cadastrar.</p>
+        </div>
+        
+        <form id="form-cliente">
+            <div class="mb-3">
+                <label class="form-label fw-bold">Nome Completo</label>
+                <input type="text" id="nome" class="form-control form-control-lg border-primary" placeholder="Ex: João da Silva" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Telefone</label>
+                <input type="text" id="telefone" class="form-control form-control-lg border-primary" placeholder="(21) 99999-9999">
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold">E-mail</label>
+                <input type="email" id="email" class="form-control form-control-lg border-primary" placeholder="seu@email.com" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mb-3">Salvar Cadastro</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // O JavaScript intercepta o clique do botão Salvar
+    document.getElementById('form-cliente').addEventListener('submit', async function(evento) {
+        evento.preventDefault(); 
+        
+        const dadosCliente = {
+            nome: document.getElementById('nome').value,
+            telefone: document.getElementById('telefone').value,
+            email: document.getElementById('email').value
+        };
+
+        try {
+            const resposta = await fetch('http://localhost:5000/clientes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosCliente)
+            });
+
+            if (resposta.ok) {
+                alert('Cliente cadastrado com sucesso!');
+                document.getElementById('form-cliente').reset();
+            } else {
+                alert('Erro ao cadastrar. Verifique se o e-mail já existe.');
+            }
+        } catch (erro) {
+            alert('Erro de conexão. A API (app.py) está rodando?');
+        }
+    });
+</script>
+
+</body>
+</html>
