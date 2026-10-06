@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
-from models import db, Cliente, Profissional, Servico
+from datetime import datetime, time
+from models import db, Cliente, Profissional, Servico, Agendamento
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -110,6 +111,58 @@ def listar_servicos():
             "duracaoEmMinutos": s.duracaoEmMinutos
         } for s in servicos
     ]
+    return jsonify(resultado), 200
+
+
+
+# rotas agenda
+@app.route('/agenda', methods=['GET'])
+def consultar_agenda():
+    """Consulta os agendamentos, com filtros opcionais por data e profissional."""
+    consulta = Agendamento.query
+
+    data = request.args.get('data')
+    profissional_id = request.args.get('profissional_id', type=int)
+
+    if data:
+        try:
+            data_consulta = datetime.strptime(data, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({"erro": "Data inválida. Use o formato YYYY-MM-DD."}), 400
+
+        inicio = datetime.combine(data_consulta, time.min)
+        fim = datetime.combine(data_consulta, time.max)
+        consulta = consulta.filter(Agendamento.dataHora.between(inicio, fim))
+
+    if profissional_id is not None:
+        consulta = consulta.filter(Agendamento.profissional_id == profissional_id)
+
+    agendamentos = consulta.order_by(Agendamento.dataHora.asc()).all()
+
+    resultado = [
+        {
+            "id": a.id,
+            "dataHora": a.dataHora.isoformat(),
+            "status": a.status,
+            "cliente": {
+                "id": a.cliente.id,
+                "nome": a.cliente.nome
+            },
+            "profissional": {
+                "id": a.profissional.id,
+                "nome": a.profissional.nome,
+                "especialidade": a.profissional.especialidade
+            },
+            "servico": {
+                "id": a.servico.id,
+                "nome": a.servico.nome,
+                "duracaoEmMinutos": a.servico.duracaoEmMinutos,
+                "preco": str(a.servico.preco)
+            }
+        }
+        for a in agendamentos
+    ]
+
     return jsonify(resultado), 200
 
 if __name__ == '__main__':

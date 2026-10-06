@@ -44,3 +44,23 @@ class Servico(db.Model):
 
     def __repr__(self):
         return f"<Servico {self.nome}>"
+
+class Agendamento(db.Model):
+    __tablename__ = 'agendamento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    dataHora = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default='Agendado')
+    dataCriacao = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+    dataAlteracao = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id', ondelete='CASCADE'), nullable=False)
+    profissional_id = db.Column(db.Integer, db.ForeignKey('profissional.id', ondelete='CASCADE'), nullable=False)
+    servico_id = db.Column(db.Integer, db.ForeignKey('servico.id', ondelete='CASCADE'), nullable=False)
+
+    cliente = db.relationship('Cliente')
+    profissional = db.relationship('Profissional')
+    servico = db.relationship('Servico')
+
+    def __repr__(self):
+        return f"<Agendamento {self.id} - {self.dataHora}>"
