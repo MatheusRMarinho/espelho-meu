@@ -16,8 +16,11 @@
             background-color: #ffffff;
             padding: 3rem 2rem;
             border-radius: 12px;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
             border: 1px solid #dee2e6;
+        }
+        .time-btn {
+            width: 95px;
         }
         .card {
             transition: transform 0.2s;
@@ -30,28 +33,27 @@
 </head>
 <body>
 
-
 <nav class="navbar navbar-expand navbar-dark bg-dark py-3">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
         <div class="d-flex">
             <a href="agenda.html" class="btn btn-outline-light me-3 px-4">Minha Agenda</a>
-            <a href="login.html" class="btn btn-light fw-bold px-4">👤 Sair</a>
+            <a href="login.html" class="btn btn-light fw-bold px-4">👤 Entrar / Sair</a>
         </div>
     </div>
 </nav>
 
 <div class="container mt-5">
-    
     <div class="hero-section text-center shadow-sm">
-        <h1 class="fw-bolder mb-2">✨ Escolha seu Profissional e Agende ✨</h1>
-        <p class="text-muted">Selecione o serviço desejado, a data e o horário diretamente no card do profissional.</p>
+        <h1 class="fw-bolder mb-2">✨ Bem-vinda(o) ao seu momento de cuidado ✨</h1>
+        <p class="lead text-muted m-0">Escolha o profissional abaixo, selecione o serviço, a data e o horário desejado.</p>
     </div>
 
-   
-    <div class="row" id="container-profissionais">
-        
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <h3 class="fw-bold m-0">Profissionais Disponíveis</h3>
     </div>
+
+    <div class="row" id="container-profissionais"></div>
 </div>
 
 <footer class="bg-white border-top py-4 mt-5 text-center text-muted">
@@ -62,103 +64,129 @@
 
 <script>
     let listaServicos = [];
+    const HORARIOS_PADRAO = ['10:00', '14:00', '16:00', '18:00'];
 
     window.addEventListener('DOMContentLoaded', async () => {
-        await carregarServicosECapinar();
+        await inicializarPagina();
     });
 
-    async function carregarServicosECapinar() {
+    async function inicializarPagina() {
         try {
-            
-            const resServ = await fetch('http://localhost:5000/servicos');
-            if (resServ.ok) {
-                listaServicos = await resServ.json();
+            const resServicos = await fetch('http://localhost:5000/servicos');
+            if (resServicos.ok) {
+                listaServicos = await resServicos.json();
             }
             await carregarProfissionais();
         } catch (erro) {
-            console.error('Erro ao carregar dados iniciais:', erro);
+            console.error('Erro ao conectar com o servidor:', erro);
         }
     }
 
     async function carregarProfissionais() {
-        try {
-            const resposta = await fetch('http://localhost:5000/profissionais');
-            if (resposta.ok) {
-                const profissionais = await resposta.json();
-                const container = document.getElementById('container-profissionais');
-                container.innerHTML = '';
+        const resProf = await fetch('http://localhost:5000/profissionais');
+        if (!resProf.ok) return;
 
-                profissionais.forEach(prof => {
-                    
-                    let optionsServicos = '<option selected disabled value="">Selecione o serviço...</option>';
-                    listaServicos.forEach(serv => {
-                        optionsServicos += `<option value="${serv.id}">${serv.nome} - R$ ${serv.preco}</option>`;
-                    });
+        const profissionais = await resProf.json();
+        const container = document.getElementById('container-profissionais');
+        container.innerHTML = '';
 
-                    const cardHTML = `
-                        <div class="col-md-6 mb-4">
-                            <div class="card h-100 shadow-sm border-0">
-                                <div class="card-body p-4">
-                                    <h3 class="card-title fw-bold text-dark">${prof.nome}</h3>
-                                    <h6 class="card-subtitle mb-3 text-primary fw-semibold">${prof.especialidade}</h6>
-                                    <p class="text-muted small mb-4">📞 ${prof.tel}</p>
+        profissionais.forEach(prof => {
+            let opcoesServico = '<option selected disabled value="">Qual serviço você procura?</option>';
+            listaServicos.forEach(s => {
+                opcoesServico += `<option value="${s.id}">${s.nome} - R$ ${Number(s.preco).toFixed(2)}</option>`;
+            });
 
-                                    <!-- Seleção de Serviço por Profissional -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold small">Serviço:</label>
-                                        <select class="form-select select-servico" data-prof-id="${prof.id}">
-                                            ${optionsServicos}
-                                        </select>
-                                    </div>
+            const botoesHtml = HORARIOS_PADRAO.map(h => 
+                `<button type="button" class="btn btn-outline-primary btn-sm time-btn" data-hora="${h}">${h}</button>`
+            ).join('');
 
-                                    <!-- Seleção de Data -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold small">Data:</label>
-                                        <input type="date" class="form-control input-data">
-                                    </div>
+            container.innerHTML += `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm border-0" data-prof-id="${prof.id}">
+                        <div class="card-body p-4">
+                            <h4 class="card-title fw-bold">${prof.nome}</h4>
+                            <h6 class="card-subtitle mb-2 text-primary fw-semibold">Especialidade: ${prof.especialidade}</h6>
+                            <p class="text-muted small mb-3">📞 ${prof.tel}</p>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">1. Escolha o serviço:</label>
+                                <select class="form-select select-servico">
+                                    ${opcoesServico}
+                                </select>
+                            </div>
 
-                                    <!-- Seleção de Horário -->
-                                    <div class="mb-3">
-                                        <label class="form-label fw-bold small">Horário:</label>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <button type="button" class="btn btn-outline-primary btn-sm time-btn">10:00</button>
-                                            <button type="button" class="btn btn-outline-primary btn-sm time-btn">14:00</button>
-                                            <button type="button" class="btn btn-outline-primary btn-sm time-btn">16:00</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-white border-top-0 p-4 pt-0">
-                                    <button class="btn btn-success w-100 fw-bold py-2 btn-agendar" data-profissional="${prof.id}">Confirmar Agendamento</button>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">2. Escolha a data:</label>
+                                <input type="date" class="form-control input-data">
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small text-dark">3. Escolha o horário:</label>
+                                <div class="d-flex flex-wrap gap-2 time-container">
+                                    ${botoesHtml}
                                 </div>
                             </div>
                         </div>
-                    `;
-                    container.innerHTML += cardHTML;
-                });
+                        <div class="card-footer bg-white border-top-0 p-4 pt-0">
+                            <button class="btn btn-success w-100 fw-bold py-2 btn-agendar" data-profissional="${prof.id}">
+                                Confirmar Agendamento
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
 
-                ativarEventosCards();
-            }
-        } catch (erro) {
-            console.error('Erro ao carregar profissionais:', erro);
-        }
+        configurarInteracoesCard();
     }
 
-    function ativarEventosCards() {
-        
+    function configurarInteracoesCard() {
         document.querySelectorAll('.card').forEach(card => {
-            const timeButtons = card.querySelectorAll('.time-btn');
-            timeButtons.forEach(btn => {
+            const profId = card.getAttribute('data-prof-id');
+            const inputData = card.querySelector('.input-data');
+            const botoesHorario = card.querySelectorAll('.time-btn');
+
+            inputData.addEventListener('change', async () => {
+                const dataEscolhida = inputData.value;
+                if (!dataEscolhida) return;
+
+                const res = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}&profissional_id=${profId}`);
+                const agendamentosDia = res.ok ? await res.json() : [];
+
+                const horasOcupadas = agendamentosDia
+                    .filter(a => a.status !== 'Cancelado')
+                    .map(a => a.dataHora.substring(11, 16));
+
+                botoesHorario.forEach(btn => {
+                    const hora = btn.getAttribute('data-hora');
+                    btn.classList.remove('btn-primary', 'active', 'btn-secondary', 'btn-outline-primary');
+                    
+                    if (horasOcupadas.includes(hora)) {
+                        btn.disabled = true;
+                        btn.classList.add('btn-secondary');
+                        btn.innerText = `${hora} (Ocupado)`;
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.add('btn-outline-primary');
+                        btn.innerText = hora;
+                    }
+                });
+            });
+
+            botoesHorario.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    timeButtons.forEach(b => {
-                        b.classList.remove('btn-primary', 'active');
-                        b.classList.add('btn-outline-primary');
+                    if (btn.disabled) return;
+                    botoesHorario.forEach(b => {
+                        if (!b.disabled) {
+                            b.classList.remove('btn-primary', 'active');
+                            b.classList.add('btn-outline-primary');
+                        }
                     });
                     btn.classList.remove('btn-outline-primary');
                     btn.classList.add('btn-primary', 'active');
                 });
             });
         });
-
 
         document.querySelectorAll('.btn-agendar').forEach(botao => {
             botao.addEventListener('click', async function() {
@@ -171,47 +199,43 @@
 
                 const card = this.closest('.card');
                 const servico_id = card.querySelector('.select-servico').value;
-                const data_agendamento = card.querySelector('.input-data').value;
+                const data = card.querySelector('.input-data').value;
+                const btnHorario = card.querySelector('.time-btn.active');
                 const profissional_id = this.getAttribute('data-profissional');
-                const horarioSelecionado = card.querySelector('.time-btn.active');
 
-                if (!servico_id) return alert('Selecione um serviço.');
-                if (!data_agendamento) return alert('Escolha uma data.');
-                if (!horarioSelecionado) return alert('Selecione um horário.');
+                if (!servico_id) return alert('Selecione um serviço neste card.');
+                if (!data) return alert('Escolha uma data neste card.');
+                if (!btnHorario) return alert('Selecione um horário neste card.');
 
-                const hora = horarioSelecionado.innerText;
-                const dataHoraIso = `${data_agendamento}T${hora}:00`;
+                const horaLimpa = btnHorario.getAttribute('data-hora') || btnHorario.innerText;
 
-                const dadosAgendamento = {
+                const payload = {
                     cliente_id: parseInt(cliente_id),
                     profissional_id: parseInt(profissional_id),
                     servico_id: parseInt(servico_id),
-                    dataHora: dataHoraIso
+                    dataHora: `${data}T${horaLimpa}:00`
                 };
 
                 try {
                     const resposta = await fetch('http://localhost:5000/agendamentos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(dadosAgendamento)
+                        body: JSON.stringify(payload)
                     });
 
                     const retorno = await resposta.json();
-
                     if (resposta.ok) {
-                        alert('Agendamento realizado com sucesso!');
                         localStorage.setItem('ultimo_agendamento_id', retorno.id);
                         window.location.href = 'confirmacao.html';
                     } else {
-                        alert('Erro: ' + (retorno.erro || 'Conflito de horário.'));
+                        alert('Não foi possível agendar: ' + (retorno.erro || 'Horário indisponível.'));
                     }
-                } catch (erro) {
+                } catch (e) {
                     alert('Erro de conexão com o servidor.');
                 }
             });
         });
     }
 </script>
-
 </body>
 </html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Espelho Meu - Minha Agenda</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .container { max-width: 900px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand navbar-dark bg-dark py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
+        <div class="d-flex">
+            <a href="index.html" class="btn btn-outline-light me-3 px-4">Novo Agendamento</a>
+            <a href="login.html" class="btn btn-light fw-bold px-4">👤 Sair</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold m-0">Meus Agendamentos</h2>
+        <a href="index.html" class="btn btn-outline-secondary fw-semibold px-4">
+            ← Voltar para a Página Inicial
+        </a>
+    </div>
+    
+    <div id="lista-agendamentos" class="list-group shadow-sm">
+        <div class="p-4 bg-white rounded text-center text-muted">Carregando seus agendamentos...</div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        const clienteId = localStorage.getItem('cliente_id');
+        if (!clienteId) {
+            alert('Por favor, faça login para ver sua agenda.');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            const resposta = await fetch('http://localhost:5000/agenda');
+            if (resposta.ok) {
+                const agendaGeral = await resposta.json();
+                const meusAgendamentos = agendaGeral.filter(a => a.cliente.id == clienteId);
+                const container = document.getElementById('lista-agendamentos');
+
+                if (meusAgendamentos.length === 0) {
+                    container.innerHTML = '<div class="p-4 bg-white rounded text-center text-muted">Você ainda não possui agendamentos marcados.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                meusAgendamentos.forEach(ag => {
+                    const dataObj = new Date(ag.dataHora);
+                    const dataFormatada = dataObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                    const horaFormatada = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+
+                    container.innerHTML += `
+                        <div class="list-group-item p-4 mb-3 border-0 shadow-sm rounded bg-white">
+                            <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                                <h5 class="mb-0 fw-bold text-primary">${ag.servico.nome}</h5>
+                                <span class="badge bg-success fs-6">R$ ${Number(ag.servico.preco).toFixed(2)}</span>
+                            </div>
+                            <p class="mb-1 text-dark"><strong>Profissional:</strong> ${ag.profissional.nome} (${ag.profissional.especialidade})</p>
+                            <small class="text-muted">📅 Data: ${dataFormatada} às ${horaFormatada}</small>
+                        </div>
+                    `;
+                });
+            }
+        } catch (erro) {
+            document.getElementById('lista-agendamentos').innerHTML = '<div class="p-4 bg-white rounded text-center text-danger">Erro ao conectar com o servidor.</div>';
+        }
+    });
+</script>
+</body>
+</html>
