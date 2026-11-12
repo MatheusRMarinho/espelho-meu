@@ -35,7 +35,9 @@
 </div>
 
 <script>
-    window.addEventListener('DOMContentLoaded', async () => {
+    window.addEventListener('DOMContentLoaded', carregarMinhaAgenda);
+
+    async function carregarMinhaAgenda() {
         const clienteId = localStorage.getItem('cliente_id');
         if (!clienteId) {
             alert('Por favor, faça login para ver sua agenda.');
@@ -43,12 +45,13 @@
             return;
         }
 
+        const container = document.getElementById('lista-agendamentos');
+
         try {
             const resposta = await fetch('http://localhost:5000/agenda');
             if (resposta.ok) {
                 const agendaGeral = await resposta.json();
                 const meusAgendamentos = agendaGeral.filter(a => a.cliente.id == clienteId);
-                const container = document.getElementById('lista-agendamentos');
 
                 if (meusAgendamentos.length === 0) {
                     container.innerHTML = '<div class="p-4 bg-white rounded text-center text-muted">Você ainda não possui agendamentos marcados.</div>';
@@ -58,25 +61,63 @@
                 container.innerHTML = '';
                 meusAgendamentos.forEach(ag => {
                     const dataObj = new Date(ag.dataHora);
-                    const dataFormatada = dataObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-                    const horaFormatada = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+                    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+                    const horaFormatada = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    const isCancelado = ag.status === 'Cancelado';
+                    const badgeStatus = isCancelado 
+                        ? '<span class="badge bg-danger ms-2">Cancelado</span>' 
+                        : '<span class="badge bg-primary ms-2">Agendado</span>';
+
+                    const botaoCancelar = isCancelado 
+                        ? '<span class="text-muted small fst-italic">Horário cancelado</span>'
+                        : `<button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="cancelarAgendamento(${ag.id})">
+                               🗑️ Cancelar Agendamento
+                           </button>`;
 
                     container.innerHTML += `
-                        <div class="list-group-item p-4 mb-3 border-0 shadow-sm rounded bg-white">
+                        <div class="list-group-item p-4 mb-3 border-0 shadow-sm rounded bg-white ${isCancelado ? 'opacity-75' : ''}">
                             <div class="d-flex w-100 justify-content-between align-items-center mb-2">
-                                <h5 class="mb-0 fw-bold text-primary">${ag.servico.nome}</h5>
+                                <div>
+                                    <h5 class="mb-0 fw-bold text-primary d-inline">${ag.servico.nome}</h5>
+                                    ${badgeStatus}
+                                </div>
                                 <span class="badge bg-success fs-6">R$ ${Number(ag.servico.preco).toFixed(2)}</span>
                             </div>
                             <p class="mb-1 text-dark"><strong>Profissional:</strong> ${ag.profissional.nome} (${ag.profissional.especialidade})</p>
-                            <small class="text-muted">📅 Data: ${dataFormatada} às ${horaFormatada}</small>
+                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                <small class="text-muted fw-semibold">📅 Data: ${dataFormatada} às ${horaFormatada}</small>
+                                ${botaoCancelar}
+                            </div>
                         </div>
                     `;
                 });
             }
         } catch (erro) {
-            document.getElementById('lista-agendamentos').innerHTML = '<div class="p-4 bg-white rounded text-center text-danger">Erro ao conectar com o servidor.</div>';
+            container.innerHTML = '<div class="p-4 bg-white rounded text-center text-danger">Erro ao conectar com o servidor.</div>';
         }
-    });
+    }
+
+    async function cancelarAgendamento(id) {
+        if (!confirm('Tem certeza que deseja cancelar este agendamento?')) {
+            return;
+        }
+
+        try {
+            const resposta = await fetch(`http://localhost:5000/agendamentos/${id}/cancelar`, {
+                method: 'PATCH'
+            });
+
+            if (resposta.ok) {
+                alert('Agendamento cancelado com sucesso!');
+                carregarMinhaAgenda();
+            } else {
+                const erro = await resposta.json();
+                alert('Erro ao cancelar: ' + (erro.erro || 'Não foi possível cancelar.'));
+            }
+        } catch (erro) {
+            alert('Erro de conexão com o servidor.');
+        }
+    }
 </script>
 </body>
 </html>

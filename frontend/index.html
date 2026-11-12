@@ -141,37 +141,66 @@
     }
 
     function configurarInteracoesCard() {
+        // Pega a data de hoje no formato YYYY-MM-DD
+        const hoje = new Date().toISOString().split('T')[0];
+
         document.querySelectorAll('.card').forEach(card => {
             const profId = card.getAttribute('data-prof-id');
             const inputData = card.querySelector('.input-data');
             const botoesHorario = card.querySelectorAll('.time-btn');
 
-            inputData.addEventListener('change', async () => {
+            // Define hoje como data inicial e impede datas no passado
+            inputData.value = hoje;
+            inputData.min = hoje;
+
+            async function atualizarHorariosDisponiveis() {
                 const dataEscolhida = inputData.value;
                 if (!dataEscolhida) return;
 
-                const res = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}&profissional_id=${profId}`);
-                const agendamentosDia = res.ok ? await res.json() : [];
+                try {
+                    const res = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}&profissional_id=${profId}`);
+                    const agendamentosDia = res.ok ? await res.json() : [];
 
-                const horasOcupadas = agendamentosDia
-                    .filter(a => a.status !== 'Cancelado')
-                    .map(a => a.dataHora.substring(11, 16));
+                    // Filtra apenas agendamentos ativos daquele profissional
+                    const ativos = agendamentosDia.filter(a => 
+                        a.status !== 'Cancelado' && a.profissional.id == profId
+                    );
 
-                botoesHorario.forEach(btn => {
-                    const hora = btn.getAttribute('data-hora');
-                    btn.classList.remove('btn-primary', 'active', 'btn-secondary', 'btn-outline-primary');
-                    
-                    if (horasOcupadas.includes(hora)) {
-                        btn.disabled = true;
-                        btn.classList.add('btn-secondary');
-                        btn.innerText = `${hora} (Ocupado)`;
-                    } else {
-                        btn.disabled = false;
-                        btn.classList.add('btn-outline-primary');
-                        btn.innerText = hora;
-                    }
-                });
-            });
+                    botoesHorario.forEach(btn => {
+                        const horaBtn = btn.getAttribute('data-hora');
+                        const [hBtn, mBtn] = horaBtn.split(':').map(Number);
+                        const minutosBtn = hBtn * 60 + mBtn;
+
+                        // Verifica se o horário do botão cai dentro de algum atendimento já agendado
+                        const estaOcupado = ativos.some(ag => {
+                            const horaInicioStr = ag.dataHora.substring(11, 16);
+                            const [hIni, mIni] = horaInicioStr.split(':').map(Number);
+                            const inicioMin = hIni * 60 + mIni;
+                            const fimMin = inicioMin + (ag.servico.duracaoEmMinutos || 60);
+
+                            return minutosBtn >= inicioMin && minutosBtn < fimMin;
+                        });
+
+                        btn.classList.remove('btn-primary', 'active', 'btn-secondary', 'btn-outline-primary');
+
+                        if (estaOcupado) {
+                            btn.disabled = true;
+                            btn.classList.add('btn-secondary');
+                            btn.innerText = `${horaBtn} (Ocupado)`;
+                        } else {
+                            btn.disabled = false;
+                            btn.classList.add('btn-outline-primary');
+                            btn.innerText = horaBtn;
+                        }
+                    });
+                } catch (e) {
+                    console.error('Erro ao checar horários ocupados:', e);
+                }
+            }
+
+            // Checa imediatamente ao carregar a página (para a data de hoje) e sempre que mudar a data
+            atualizarHorariosDisponiveis();
+            inputData.addEventListener('change', atualizarHorariosDisponiveis);
 
             botoesHorario.forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -205,9 +234,9 @@
 
                 if (!servico_id) return alert('Selecione um serviço neste card.');
                 if (!data) return alert('Escolha uma data neste card.');
-                if (!btnHorario) return alert('Selecione um horário neste card.');
+                if (!btnHorario || btnHorario.disabled) return alert('Selecione um horário disponível neste card.');
 
-                const horaLimpa = btnHorario.getAttribute('data-hora') || btnHorario.innerText;
+                const horaLimpa = btnHorario.getAttribute('data-hora');
 
                 const payload = {
                     cliente_id: parseInt(cliente_id),
