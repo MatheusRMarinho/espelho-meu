@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta
 app = Flask(__name__)
 
 # Configuração do banco de dados
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://postgres:postgres@localhost/espelho_meu'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_teste.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)

@@ -20,7 +20,7 @@
             border: 1px solid #dee2e6;
         }
         .time-btn {
-            width: 85px;
+            width: 95px;
         }
         .card {
             transition: transform 0.2s;
@@ -33,7 +33,6 @@
 </head>
 <body>
 
-
 <nav class="navbar navbar-expand navbar-dark bg-dark py-3">
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
@@ -45,7 +44,6 @@
 </nav>
 
 <div class="container mt-5">
-   
     <div class="hero-section text-center shadow-sm">
         <h1 class="fw-bolder mb-2">✨ Bem-vinda(o) ao seu momento de cuidado ✨</h1>
         <p class="lead text-muted m-0">Escolha o profissional abaixo, selecione o serviço, a data e o horário desejado.</p>
@@ -55,7 +53,6 @@
         <h3 class="fw-bold m-0">Profissionais Disponíveis</h3>
     </div>
 
-  
     <div class="row" id="container-profissionais"></div>
 </div>
 
@@ -67,6 +64,7 @@
 
 <script>
     let listaServicos = [];
+    const HORARIOS_PADRAO = ['10:00', '14:00', '16:00', '18:00'];
 
     window.addEventListener('DOMContentLoaded', async () => {
         await inicializarPagina();
@@ -74,12 +72,10 @@
 
     async function inicializarPagina() {
         try {
-           
             const resServicos = await fetch('http://localhost:5000/servicos');
             if (resServicos.ok) {
                 listaServicos = await resServicos.json();
             }
-           
             await carregarProfissionais();
         } catch (erro) {
             console.error('Erro ao conectar com o servidor:', erro);
@@ -100,12 +96,17 @@
                 opcoesServico += `<option value="${s.id}">${s.nome} - R$ ${Number(s.preco).toFixed(2)}</option>`;
             });
 
+            const botoesHtml = HORARIOS_PADRAO.map(h => 
+                `<button type="button" class="btn btn-outline-primary btn-sm time-btn" data-hora="${h}">${h}</button>`
+            ).join('');
+
             container.innerHTML += `
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm border-0">
+                    <div class="card h-100 shadow-sm border-0" data-prof-id="${prof.id}">
                         <div class="card-body p-4">
                             <h4 class="card-title fw-bold">${prof.nome}</h4>
-                            <h6 class="card-subtitle mb-3 text-primary fw-semibold">Especialidade: ${prof.especialidade}</h6>
+                            <h6 class="card-subtitle mb-2 text-primary fw-semibold">Especialidade: ${prof.especialidade}</h6>
+                            <p class="text-muted small mb-3">📞 ${prof.tel}</p>
                             
                             <div class="mb-3">
                                 <label class="form-label fw-bold small text-dark">1. Escolha o serviço:</label>
@@ -122,9 +123,7 @@
                             <div class="mb-2">
                                 <label class="form-label fw-bold small text-dark">3. Escolha o horário:</label>
                                 <div class="d-flex flex-wrap gap-2 time-container">
-                                    <button type="button" class="btn btn-outline-primary btn-sm time-btn">10:00</button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm time-btn">14:00</button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm time-btn">16:00</button>
+                                    ${botoesHtml}
                                 </div>
                             </div>
                         </div>
@@ -142,14 +141,46 @@
     }
 
     function configurarInteracoesCard() {
-      
         document.querySelectorAll('.card').forEach(card => {
+            const profId = card.getAttribute('data-prof-id');
+            const inputData = card.querySelector('.input-data');
             const botoesHorario = card.querySelectorAll('.time-btn');
+
+            inputData.addEventListener('change', async () => {
+                const dataEscolhida = inputData.value;
+                if (!dataEscolhida) return;
+
+                const res = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}&profissional_id=${profId}`);
+                const agendamentosDia = res.ok ? await res.json() : [];
+
+                const horasOcupadas = agendamentosDia
+                    .filter(a => a.status !== 'Cancelado')
+                    .map(a => a.dataHora.substring(11, 16));
+
+                botoesHorario.forEach(btn => {
+                    const hora = btn.getAttribute('data-hora');
+                    btn.classList.remove('btn-primary', 'active', 'btn-secondary', 'btn-outline-primary');
+                    
+                    if (horasOcupadas.includes(hora)) {
+                        btn.disabled = true;
+                        btn.classList.add('btn-secondary');
+                        btn.innerText = `${hora} (Ocupado)`;
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.add('btn-outline-primary');
+                        btn.innerText = hora;
+                    }
+                });
+            });
+
             botoesHorario.forEach(btn => {
                 btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
                     botoesHorario.forEach(b => {
-                        b.classList.remove('btn-primary', 'active');
-                        b.classList.add('btn-outline-primary');
+                        if (!b.disabled) {
+                            b.classList.remove('btn-primary', 'active');
+                            b.classList.add('btn-outline-primary');
+                        }
                     });
                     btn.classList.remove('btn-outline-primary');
                     btn.classList.add('btn-primary', 'active');
@@ -157,7 +188,6 @@
             });
         });
 
-   
         document.querySelectorAll('.btn-agendar').forEach(botao => {
             botao.addEventListener('click', async function() {
                 const cliente_id = localStorage.getItem('cliente_id');
@@ -177,11 +207,13 @@
                 if (!data) return alert('Escolha uma data neste card.');
                 if (!btnHorario) return alert('Selecione um horário neste card.');
 
+                const horaLimpa = btnHorario.getAttribute('data-hora') || btnHorario.innerText;
+
                 const payload = {
                     cliente_id: parseInt(cliente_id),
                     profissional_id: parseInt(profissional_id),
                     servico_id: parseInt(servico_id),
-                    dataHora: `${data}T${btnHorario.innerText}:00`
+                    dataHora: `${data}T${horaLimpa}:00`
                 };
 
                 try {

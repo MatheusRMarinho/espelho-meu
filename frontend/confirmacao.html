@@ -48,10 +48,10 @@
         <div class="card bg-light border-0 mx-auto text-start mb-5" style="max-width: 500px;">
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-3 border-bottom pb-2">Resumo do Atendimento</h5>
-                <p class="mb-2"><strong> Profissional:</strong> Juliana Silva (Manicure)</p>
-                <p class="mb-2"><strong> Data:</strong> 10 de Setembro de 2026</p>
-                <p class="mb-2"><strong> Horário:</strong> 14:00</p>
-                <p class="mb-0"><strong> Valor:</strong> R$ 45,00 (Pagamento no local ou via PIX)</p>
+                <p class="mb-2"><strong> Profissional:</strong> <span id="conf-prof">Carregando...</span></p>
+                <p class="mb-2"><strong> Data:</strong> <span id="conf-data">Carregando...</span></p>
+                <p class="mb-2"><strong> Horário:</strong> <span id="conf-hora">Carregando...</span></p>
+                <p class="mb-0"><strong> Valor:</strong> <span id="conf-valor">Carregando...</span> (Pagamento no local ou via PIX)</p>
             </div>
         </div>
 
@@ -61,6 +61,43 @@
         </div>
     </div>
 </div>
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        // 1. Pega o ID do agendamento que acabamos de fazer
+        const agendamentoId = localStorage.getItem('ultimo_agendamento_id');
+        
+        if (!agendamentoId) {
+            // Se alguém tentar acessar essa página direto sem agendar nada, volta para o início
+            window.location.href = 'index.html';
+            return;
+        }
 
+        try {
+            // 2. Consulta a agenda na API
+            const resposta = await fetch('http://localhost:5000/agenda');
+            if (resposta.ok) {
+                const agenda = await resposta.json();
+                
+                // 3. Encontra o agendamento exato pelo ID
+                const agendamento = agenda.find(a => a.id == agendamentoId);
+
+                if (agendamento) {
+                    // Formata a data (de "2026-10-10T14:00:00" para "10/10/2026" e "14:00")
+                    const dataHora = new Date(agendamento.dataHora);
+                    const dataFormatada = dataHora.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                    const horaFormatada = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+
+                    // 4. Injeta os dados reais no HTML
+                    document.getElementById('conf-prof').innerText = `${agendamento.profissional.nome} (${agendamento.servico.nome})`;
+                    document.getElementById('conf-data').innerText = dataFormatada;
+                    document.getElementById('conf-hora').innerText = horaFormatada;
+                    document.getElementById('conf-valor').innerText = `R$ ${agendamento.servico.preco}`;
+                }
+            }
+        } catch (erro) {
+            console.error('Erro ao buscar os dados da confirmação:', erro);
+        }
+    });
+</script>
 </body>
 </html>

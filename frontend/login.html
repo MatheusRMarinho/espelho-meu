@@ -84,6 +84,10 @@
             });
 
             if (resposta.ok) {
+                const dadosRetorno = await resposta.json();
+
+                localStorage.setItem('cliente_id', dadosRetorno.cliente.id);
+                
                 alert('Login aprovado!');
                 window.location.href = 'index.html'; 
             } else {
