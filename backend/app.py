@@ -1,17 +1,19 @@
+import os
 from flask import Flask, request, jsonify
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from models import db, Cliente, Profissional, Servico, Agendamento
 from flask_cors import CORS
-from datetime import datetime, time, timedelta
 
 app = Flask(__name__)
 
-# Configuração do banco de dados
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_teste.db'
+# Garante que o banco_teste.db fique sempre dentro da pasta backend/
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'banco_teste.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 CORS(app)
+
 # rotas cliente
 @app.route('/clientes', methods=['POST'])
 def cadastrar_cliente():
@@ -36,7 +38,6 @@ def listar_clientes():
     resultado = [{"id": c.id, "nome": c.nome, "telefone": c.telefone, "email": c.email} for c in clientes]
     return jsonify(resultado), 200
 
-
 # rota login
 @app.route('/login', methods=['POST'])
 def login():
@@ -48,7 +49,6 @@ def login():
         return jsonify({"erro": "Informe e-mail e senha."}), 400
 
     cliente = Cliente.query.filter_by(email=email).first()
-    # Mesma mensagem para e-mail inexistente e senha errada, para não revelar quais e-mails existem
     if cliente is None or not cliente.verificar_senha(senha):
         return jsonify({"erro": "E-mail ou senha inválidos."}), 401
 
@@ -56,7 +56,6 @@ def login():
         "mensagem": "Login realizado com sucesso!",
         "cliente": {"id": cliente.id, "nome": cliente.nome, "email": cliente.email}
     }), 200
-
 
 # rotas profissional
 @app.route('/profissionais', methods=['POST'])
@@ -80,7 +79,6 @@ def listar_profissionais():
     profissionais = Profissional.query.all()
     resultado = [{"id": p.id, "nome": p.nome, "especialidade": p.especialidade, "tel": p.tel} for p in profissionais]
     return jsonify(resultado), 200
-
 
 # rotas serviço
 @app.route('/servicos', methods=['POST'])
@@ -122,7 +120,7 @@ def criar_agendamento():
     cliente_id = dados.get('cliente_id')
     profissional_id = dados.get('profissional_id')
     servico_id = dados.get('servico_id')
-    data_hora_str = dados.get('dataHora') # Formato esperado: "2026-10-10T14:00:00"
+    data_hora_str = dados.get('dataHora')
 
     if not all([cliente_id, profissional_id, servico_id, data_hora_str]):
         return jsonify({"erro": "Campos obrigatórios: cliente_id, profissional_id, servico_id, dataHora"}), 400
@@ -132,14 +130,12 @@ def criar_agendamento():
     except ValueError:
         return jsonify({"erro": "Formato de dataHora inválido. Use formato ISO (ex: YYYY-MM-DDTHH:MM:SS)."}), 400
 
-    # Busca o serviço para consultar a duração
     servico = db.session.get(Servico, servico_id)
     if not servico:
         return jsonify({"erro": "Serviço não encontrado."}), 404
 
     data_hora_fim = data_hora_inicio + timedelta(minutes=servico.duracaoEmMinutos)
 
-    # Implementação do RNF-008: Validação de conflito de agenda do profissional
     agendamentos_existentes = Agendamento.query.filter(
         Agendamento.profissional_id == profissional_id,
         Agendamento.status != 'Cancelado'
@@ -149,7 +145,6 @@ def criar_agendamento():
         existente_inicio = ag.dataHora
         existente_fim = existente_inicio + timedelta(minutes=ag.servico.duracaoEmMinutos)
 
-        # Validação da sobreposição de horários
         if data_hora_inicio < existente_fim and data_hora_fim > existente_inicio:
             return jsonify({
                 "erro": "Horário indisponível. O profissional já possui um atendimento nesse intervalo."
@@ -176,7 +171,16 @@ def criar_agendamento():
         db.session.rollback()
         return jsonify({"erro": f"Erro interno ao agendar: {str(e)}"}), 400
 
-    
+@app.route('/agendamentos/<int:id>/cancelar', methods=['PATCH', 'DELETE'])
+def cancelar_agendamento(id):
+    agendamento = db.session.get(Agendamento, id)
+    if not agendamento:
+        return jsonify({"erro": "Agendamento não encontrado."}), 404
+
+    agendamento.status = 'Cancelado'
+    db.session.commit()
+    return jsonify({"mensagem": "Agendamento cancelado com sucesso!", "status": agendamento.status}), 200
+
 # rotas agenda
 @app.route('/agenda', methods=['GET'])
 def consultar_agenda():
@@ -201,8 +205,13 @@ def consultar_agenda():
 
     agendamentos = consulta.order_by(Agendamento.dataHora.asc()).all()
 
-    resultado = [
-        {
+    resultado = []
+    for a in agendamentos:
+        # Evita erro 500 caso algum ID de cliente/profissional/serviço seja de um banco antigo
+        if not a.cliente or not a.profissional or not a.servico:
+            continue
+
+        resultado.append({
             "id": a.id,
             "dataHora": a.dataHora.isoformat(),
             "status": a.status,
@@ -221,11 +230,11 @@ def consultar_agenda():
                 "duracaoEmMinutos": a.servico.duracaoEmMinutos,
                 "preco": str(a.servico.preco)
             }
-        }
-        for a in agendamentos
-    ]
+        })
 
     return jsonify(resultado), 200
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
