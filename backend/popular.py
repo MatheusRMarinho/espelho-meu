@@ -1,9 +1,18 @@
 from app import db, app
-from models import Profissional, Servico
+from models import Cliente, Profissional, Servico
 
 with app.app_context():
     db.create_all()
 
+    # Cria a conta Admin padrão caso ainda não exista
+    if not Cliente.query.filter_by(email="admin@espelhomeu.com").first():
+        admin = Cliente(nome="Administrador", telefone="21900000000", email="admin@espelhomeu.com")
+        admin.definir_senha("admin123")
+        db.session.add(admin)
+        db.session.commit()
+        print("Conta Admin criada: admin@espelhomeu.com / senha: admin123")
+
+    # Cria os profissionais e serviços iniciais caso o banco esteja vazio
     if Profissional.query.count() == 0:
         prof1 = Profissional(nome="Juliana Silva", especialidade="Manicure", tel="21999999999")
         prof2 = Profissional(nome="Julia Maria", especialidade="Cabeleireira", tel="21988888888")
@@ -17,4 +26,4 @@ with app.app_context():
         db.session.commit()
         print("Banco populado com 3 profissionais e 3 serviços!")
     else:
-        print("O banco já possui dados cadastrados!")
+        print("Os profissionais e serviços iniciais já estão cadastrados!")
