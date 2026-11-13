@@ -37,6 +37,7 @@
     <div class="container d-flex justify-content-between align-items-center">
         <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
         <div class="d-flex">
+            <a href="admin.html" id="btn-nav-admin" class="btn btn-warning fw-bold me-3 px-4 d-none">⚙️ Painel Admin</a>
             <a href="agenda.html" class="btn btn-outline-light me-3 px-4">Minha Agenda</a>
             <a href="login.html" class="btn btn-light fw-bold px-4">👤 Entrar / Sair</a>
         </div>
@@ -64,9 +65,15 @@
 
 <script>
     let listaServicos = [];
-    const HORARIOS_PADRAO = ['10:00', '14:00', '16:00', '18:00'];
+
+    function mesmaEspecialidade(a, b) {
+        return (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
+        if (localStorage.getItem('is_admin') === 'true') {
+            document.getElementById('btn-nav-admin').classList.remove('d-none');
+        }
         await inicializarPagina();
     });
 
@@ -86,17 +93,28 @@
         const resProf = await fetch('http://localhost:5000/profissionais');
         if (!resProf.ok) return;
 
-        const profissionais = await resProf.json();
+        // Só aparecem no catálogo os profissionais com horários de atendimento cadastrados
+        const profissionais = (await resProf.json()).filter(p => p.horarios && p.horarios.length > 0);
         const container = document.getElementById('container-profissionais');
         container.innerHTML = '';
 
+        if (profissionais.length === 0) {
+            container.innerHTML = '<p class="text-muted">Nenhum profissional com horários disponíveis no momento.</p>';
+            return;
+        }
+
         profissionais.forEach(prof => {
-            let opcoesServico = '<option selected disabled value="">Qual serviço você procura?</option>';
-            listaServicos.forEach(s => {
+            // Mostra só os serviços da especialidade do profissional
+            const servicosDoProf = listaServicos.filter(s => mesmaEspecialidade(s.especialidade, prof.especialidade));
+            let opcoesServico = servicosDoProf.length
+                ? '<option selected disabled value="">Qual serviço você procura?</option>'
+                : '<option selected disabled value="">Nenhum serviço disponível</option>';
+            servicosDoProf.forEach(s => {
                 opcoesServico += `<option value="${s.id}">${s.nome} - R$ ${Number(s.preco).toFixed(2)}</option>`;
             });
 
-            const botoesHtml = HORARIOS_PADRAO.map(h => 
+            // Cada profissional tem os próprios horários de atendimento
+            const botoesHtml = prof.horarios.map(h => 
                 `<button type="button" class="btn btn-outline-primary btn-sm time-btn" data-hora="${h}">${h}</button>`
             ).join('');
 
@@ -141,7 +159,6 @@
     }
 
     function configurarInteracoesCard() {
-        // Pega a data de hoje no formato YYYY-MM-DD
         const hoje = new Date().toISOString().split('T')[0];
 
         document.querySelectorAll('.card').forEach(card => {
@@ -149,7 +166,6 @@
             const inputData = card.querySelector('.input-data');
             const botoesHorario = card.querySelectorAll('.time-btn');
 
-            // Define hoje como data inicial e impede datas no passado
             inputData.value = hoje;
             inputData.min = hoje;
 
@@ -161,7 +177,6 @@
                     const res = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}&profissional_id=${profId}`);
                     const agendamentosDia = res.ok ? await res.json() : [];
 
-                    // Filtra apenas agendamentos ativos daquele profissional
                     const ativos = agendamentosDia.filter(a => 
                         a.status !== 'Cancelado' && a.profissional.id == profId
                     );
@@ -171,7 +186,6 @@
                         const [hBtn, mBtn] = horaBtn.split(':').map(Number);
                         const minutosBtn = hBtn * 60 + mBtn;
 
-                        // Verifica se o horário do botão cai dentro de algum atendimento já agendado
                         const estaOcupado = ativos.some(ag => {
                             const horaInicioStr = ag.dataHora.substring(11, 16);
                             const [hIni, mIni] = horaInicioStr.split(':').map(Number);
@@ -198,7 +212,6 @@
                 }
             }
 
-            // Checa imediatamente ao carregar a página (para a data de hoje) e sempre que mudar a data
             atualizarHorariosDisponiveis();
             inputData.addEventListener('change', atualizarHorariosDisponiveis);
 

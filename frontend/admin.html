@@ -38,10 +38,10 @@
     </div>
 
     <div class="row g-4">
-        <!-- f ormulário de Profissional -->
+        <!-- Formulário de Profissional -->
         <div class="col-md-6">
             <div class="admin-card p-4 shadow-sm h-100">
-                <h4 class="fw-bold mb-3 text-primary">👩‍🎨 Cadastrar Profissional</h4>
+                <h4 class="fw-bold mb-3 text-primary"> Cadastrar Profissional</h4>
                 <form id="form-profissional">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Nome do Profissional</label>
@@ -51,9 +51,14 @@
                         <label class="form-label fw-bold small">Especialidade</label>
                         <input type="text" id="prof-esp" class="form-control" placeholder="Ex: Design de Sobrancelhas" required>
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label fw-bold small">Telefone</label>
                         <input type="text" id="prof-tel" class="form-control" placeholder="Ex: 21999998888" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small">Horários de atendimento</label>
+                        <input type="text" id="prof-horarios" class="form-control" placeholder="Ex: 09:00, 10:00, 14:00, 16:00" required>
+                        <div class="form-text">Separe os horários por vírgula, no formato HH:MM.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 fw-bold">Salvar Profissional</button>
                 </form>
@@ -63,11 +68,17 @@
         <!-- Formulário de Serviço -->
         <div class="col-md-6">
             <div class="admin-card p-4 shadow-sm h-100">
-                <h4 class="fw-bold mb-3 text-success">✂️ Cadastrar Serviço</h4>
+                <h4 class="fw-bold mb-3 text-success">Cadastrar Serviço</h4>
                 <form id="form-servico">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Nome do Serviço</label>
                         <input type="text" id="serv-nome" class="form-control" placeholder="Ex: Hidratação Profunda" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Especialidade</label>
+                        <input type="text" id="serv-esp" class="form-control" list="lista-especialidades" placeholder="Ex: Cabeleireira" required>
+                        <datalist id="lista-especialidades"></datalist>
+                        <div class="form-text">Só profissionais dessa especialidade poderão realizar o serviço.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Descrição</label>
@@ -128,10 +139,21 @@
                 const ulProf = document.getElementById('lista-profissionais');
                 ulProf.innerHTML = profs.map(p => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div><strong>${p.nome}</strong> <span class="text-muted small">(${p.especialidade})</span></div>
-                        <span class="badge bg-secondary">${p.tel}</span>
+                        <div>
+                            <strong>${p.nome}</strong> <span class="text-muted small">(${p.especialidade})</span>
+                            <div class="small text-muted">🕒 ${p.horarios.length ? p.horarios.join(', ') : 'Sem horários'}</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">${p.tel}</span>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirItem('profissionais', ${p.id}, 'o profissional ${p.nome.replace(/['"]/g, '')}')">Excluir</button>
+                        </div>
                     </li>`
                 ).join('');
+
+                // Sugere as especialidades já cadastradas no formulário de serviço
+                const especialidades = [...new Set(profs.map(p => p.especialidade).filter(Boolean))];
+                document.getElementById('lista-especialidades').innerHTML =
+                    especialidades.map(e => `<option value="${e}">`).join('');
             }
 
             if (resServ.ok) {
@@ -139,8 +161,11 @@
                 const ulServ = document.getElementById('lista-servicos');
                 ulServ.innerHTML = servs.map(s => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div><strong>${s.nome}</strong> <span class="text-muted small">(${s.duracaoEmMinutos} min)</span></div>
-                        <span class="badge bg-success">R$ ${Number(s.preco).toFixed(2)}</span>
+                        <div><strong>${s.nome}</strong> <span class="text-muted small">(${s.especialidade} · ${s.duracaoEmMinutos} min)</span></div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-success">R$ ${Number(s.preco).toFixed(2)}</span>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirItem('servicos', ${s.id}, 'o serviço ${s.nome.replace(/['"]/g, '')}')">Excluir</button>
+                        </div>
                     </li>`
                 ).join('');
             }
@@ -149,12 +174,32 @@
         }
     }
 
+    async function excluirItem(rota, id, descricao) {
+        const confirmou = confirm(`Excluir ${descricao}?\nOs agendamentos ligados a ele também serão removidos.`);
+        if (!confirmou) return;
+
+        try {
+            const res = await fetch(`http://localhost:5000/${rota}/${id}`, { method: 'DELETE' });
+            const retorno = await res.json().catch(() => ({}));
+
+            if (res.ok) {
+                alert(retorno.mensagem || 'Excluído com sucesso!');
+                carregarListas();
+            } else {
+                alert('Erro ao excluir: ' + (retorno.erro || 'tente novamente.'));
+            }
+        } catch (erro) {
+            alert('Erro de conexão com o servidor.');
+        }
+    }
+
     document.getElementById('form-profissional').addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = {
             nome: document.getElementById('prof-nome').value,
             especialidade: document.getElementById('prof-esp').value,
-            tel: document.getElementById('prof-tel').value
+            tel: document.getElementById('prof-tel').value,
+            horarios: document.getElementById('prof-horarios').value
         };
 
         try {
@@ -169,7 +214,8 @@
                 e.target.reset();
                 carregarListas();
             } else {
-                alert('Erro ao cadastrar profissional.');
+                const retorno = await res.json().catch(() => ({}));
+                alert('Erro ao cadastrar profissional: ' + (retorno.erro || 'verifique os dados.'));
             }
         } catch (erro) {
             alert('Erro de conexão com o servidor.');
@@ -182,7 +228,8 @@
             nome: document.getElementById('serv-nome').value,
             descricao: document.getElementById('serv-desc').value,
             preco: parseFloat(document.getElementById('serv-preco').value),
-            duracaoEmMinutos: parseInt(document.getElementById('serv-duracao').value)
+            duracaoEmMinutos: parseInt(document.getElementById('serv-duracao').value),
+            especialidade: document.getElementById('serv-esp').value
         };
 
         try {
@@ -197,7 +244,8 @@
                 e.target.reset();
                 carregarListas();
             } else {
-                alert('Erro ao cadastrar serviço.');
+                const retorno = await res.json().catch(() => ({}));
+                alert('Erro ao cadastrar serviço: ' + (retorno.erro || 'verifique os dados.'));
             }
         } catch (erro) {
             alert('Erro de conexão com o servidor.');

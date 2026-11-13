@@ -34,8 +34,7 @@
 
 <nav class="navbar navbar-expand navbar-dark bg-dark py-3">
     <div class="container d-flex justify-content-between align-items-center" style="width: 1140px;">
-        <a class="navbar-brand fw-bold fs-4">🪞 Espelho Meu</a>
-        
+        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
     </div>
 </nav>
 
@@ -59,10 +58,10 @@
             <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mb-3">Entrar</button>
             
             <div class="text-center mt-3">
-    <a href="#" class="text-decoration-none text-muted d-block mb-2">Esqueci minha senha</a>
-    <span class="text-muted">Ainda não tem uma conta? </span>
-    <a href="cadastro-clientes.html" class="text-decoration-none fw-bold text-primary">Cadastre-se</a>
-</div>
+                <a href="#" class="text-decoration-none text-muted d-block mb-2">Esqueci minha senha</a>
+                <span class="text-muted">Ainda não tem uma conta? </span>
+                <a href="cadastro-clientes.html" class="text-decoration-none fw-bold text-primary">Cadastre-se</a>
+            </div>
         </form>
     </div>
 </div>
@@ -87,9 +86,14 @@
                 const dadosRetorno = await resposta.json();
 
                 localStorage.setItem('cliente_id', dadosRetorno.cliente.id);
+                localStorage.setItem('cliente_nome', dadosRetorno.cliente.nome);
+                localStorage.setItem('cliente_email', dadosRetorno.cliente.email);
+
+                const isAdmin = dadosRetorno.cliente.email.toLowerCase() === 'admin@espelhomeu.com';
+                localStorage.setItem('is_admin', isAdmin ? 'true' : 'false');
                 
                 alert('Login aprovado!');
-                window.location.href = 'index.html'; 
+                window.location.href = isAdmin ? 'admin.html' : 'index.html'; 
             } else {
                 alert('E-mail ou senha incorretos. Tente novamente.');
             }

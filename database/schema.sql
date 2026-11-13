@@ -12,7 +12,8 @@ CREATE TABLE profissional (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     especialidade VARCHAR(100),
-    tel VARCHAR(20)
+    tel VARCHAR(20),
+    horarios VARCHAR(255) NOT NULL DEFAULT '' -- ex: '09:00,10:00,14:00'
 );
 
 --tabela servico
@@ -21,7 +22,8 @@ CREATE TABLE servico (
     nome VARCHAR(100) NOT NULL,
     descricao TEXT,
     preco DECIMAL(10, 2) NOT NULL,
-    duracaoEmMinutos INT NOT NULL
+    duracaoEmMinutos INT NOT NULL,
+    especialidade VARCHAR(100) NOT NULL
 );
 
 -- tabela agendamento
