@@ -123,6 +123,22 @@ def listar_profissionais():
     profissionais = Profissional.query.all()
     return jsonify([profissional_json(p) for p in profissionais]), 200
 
+@app.route('/profissionais/<int:id>', methods=['DELETE'])
+def excluir_profissional(id):
+    profissional = db.session.get(Profissional, id)
+    if not profissional:
+        return jsonify({"erro": "Profissional não encontrado."}), 404
+
+    try:
+        # Remove antes os agendamentos ligados ao profissional para não violar a chave estrangeira
+        removidos = Agendamento.query.filter_by(profissional_id=id).delete()
+        db.session.delete(profissional)
+        db.session.commit()
+        return jsonify({"mensagem": "Profissional excluído!", "agendamentos_removidos": removidos}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"erro": str(e)}), 400
+
 # rotas serviço
 @app.route('/servicos', methods=['POST'])
 def cadastrar_servico():
@@ -158,6 +174,22 @@ def listar_servicos():
         } for s in servicos
     ]
     return jsonify(resultado), 200
+
+@app.route('/servicos/<int:id>', methods=['DELETE'])
+def excluir_servico(id):
+    servico = db.session.get(Servico, id)
+    if not servico:
+        return jsonify({"erro": "Serviço não encontrado."}), 404
+
+    try:
+        # Remove antes os agendamentos ligados ao serviço para não violar a chave estrangeira
+        removidos = Agendamento.query.filter_by(servico_id=id).delete()
+        db.session.delete(servico)
+        db.session.commit()
+        return jsonify({"mensagem": "Serviço excluído!", "agendamentos_removidos": removidos}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"erro": str(e)}), 400
 
 # rotas de agendamento
 @app.route('/agendamentos', methods=['POST'])

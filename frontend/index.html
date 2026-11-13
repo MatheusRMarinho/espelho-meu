@@ -93,9 +93,15 @@
         const resProf = await fetch('http://localhost:5000/profissionais');
         if (!resProf.ok) return;
 
-        const profissionais = await resProf.json();
+        // Só aparecem no catálogo os profissionais com horários de atendimento cadastrados
+        const profissionais = (await resProf.json()).filter(p => p.horarios && p.horarios.length > 0);
         const container = document.getElementById('container-profissionais');
         container.innerHTML = '';
+
+        if (profissionais.length === 0) {
+            container.innerHTML = '<p class="text-muted">Nenhum profissional com horários disponíveis no momento.</p>';
+            return;
+        }
 
         profissionais.forEach(prof => {
             // Mostra só os serviços da especialidade do profissional

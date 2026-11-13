@@ -143,7 +143,10 @@
                             <strong>${p.nome}</strong> <span class="text-muted small">(${p.especialidade})</span>
                             <div class="small text-muted">🕒 ${p.horarios.length ? p.horarios.join(', ') : 'Sem horários'}</div>
                         </div>
-                        <span class="badge bg-secondary">${p.tel}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">${p.tel}</span>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirItem('profissionais', ${p.id}, 'o profissional ${p.nome.replace(/['"]/g, '')}')">Excluir</button>
+                        </div>
                     </li>`
                 ).join('');
 
@@ -159,12 +162,34 @@
                 ulServ.innerHTML = servs.map(s => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div><strong>${s.nome}</strong> <span class="text-muted small">(${s.especialidade} · ${s.duracaoEmMinutos} min)</span></div>
-                        <span class="badge bg-success">R$ ${Number(s.preco).toFixed(2)}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-success">R$ ${Number(s.preco).toFixed(2)}</span>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirItem('servicos', ${s.id}, 'o serviço ${s.nome.replace(/['"]/g, '')}')">Excluir</button>
+                        </div>
                     </li>`
                 ).join('');
             }
         } catch (erro) {
             console.error('Erro ao carregar listas do painel:', erro);
+        }
+    }
+
+    async function excluirItem(rota, id, descricao) {
+        const confirmou = confirm(`Excluir ${descricao}?\nOs agendamentos ligados a ele também serão removidos.`);
+        if (!confirmou) return;
+
+        try {
+            const res = await fetch(`http://localhost:5000/${rota}/${id}`, { method: 'DELETE' });
+            const retorno = await res.json().catch(() => ({}));
+
+            if (res.ok) {
+                alert(retorno.mensagem || 'Excluído com sucesso!');
+                carregarListas();
+            } else {
+                alert('Erro ao excluir: ' + (retorno.erro || 'tente novamente.'));
+            }
+        } catch (erro) {
+            alert('Erro de conexão com o servidor.');
         }
     }
 

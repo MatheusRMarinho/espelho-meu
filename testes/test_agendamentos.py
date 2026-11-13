@@ -168,3 +168,41 @@ def test_cadastrar_servico_sem_especialidade(client):
     })
 
     assert response.status_code == 400
+
+
+def test_excluir_profissional_remove_agendamentos(client):
+    """Excluir um profissional também remove os agendamentos dele."""
+    client.post('/agendamentos', json={
+        "cliente_id": 1,
+        "profissional_id": 1,
+        "servico_id": 1,
+        "dataHora": "2026-10-10T14:00:00"
+    })
+
+    response = client.delete('/profissionais/1')
+
+    assert response.status_code == 200
+    assert response.json["agendamentos_removidos"] == 1
+    assert client.get('/profissionais').json == []
+    assert client.get('/agenda').json == []
+
+
+def test_excluir_servico_remove_agendamentos(client):
+    """Excluir um serviço também remove os agendamentos dele."""
+    client.post('/agendamentos', json={
+        "cliente_id": 1,
+        "profissional_id": 1,
+        "servico_id": 1,
+        "dataHora": "2026-10-10T10:00:00"
+    })
+
+    response = client.delete('/servicos/1')
+
+    assert response.status_code == 200
+    assert response.json["agendamentos_removidos"] == 1
+    assert client.get('/servicos').json == []
+
+
+def test_excluir_inexistente(client):
+    assert client.delete('/profissionais/999').status_code == 404
+    assert client.delete('/servicos/999').status_code == 404
