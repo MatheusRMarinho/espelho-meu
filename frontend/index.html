@@ -65,7 +65,10 @@
 
 <script>
     let listaServicos = [];
-    const HORARIOS_PADRAO = ['10:00', '14:00', '16:00', '18:00'];
+
+    function mesmaEspecialidade(a, b) {
+        return (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+    }
 
     window.addEventListener('DOMContentLoaded', async () => {
         if (localStorage.getItem('is_admin') === 'true') {
@@ -95,12 +98,17 @@
         container.innerHTML = '';
 
         profissionais.forEach(prof => {
-            let opcoesServico = '<option selected disabled value="">Qual serviço você procura?</option>';
-            listaServicos.forEach(s => {
+            // Mostra só os serviços da especialidade do profissional
+            const servicosDoProf = listaServicos.filter(s => mesmaEspecialidade(s.especialidade, prof.especialidade));
+            let opcoesServico = servicosDoProf.length
+                ? '<option selected disabled value="">Qual serviço você procura?</option>'
+                : '<option selected disabled value="">Nenhum serviço disponível</option>';
+            servicosDoProf.forEach(s => {
                 opcoesServico += `<option value="${s.id}">${s.nome} - R$ ${Number(s.preco).toFixed(2)}</option>`;
             });
 
-            const botoesHtml = HORARIOS_PADRAO.map(h => 
+            // Cada profissional tem os próprios horários de atendimento
+            const botoesHtml = prof.horarios.map(h => 
                 `<button type="button" class="btn btn-outline-primary btn-sm time-btn" data-hora="${h}">${h}</button>`
             ).join('');
 

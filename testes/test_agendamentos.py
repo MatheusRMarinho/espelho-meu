@@ -1,6 +1,6 @@
 import pytest
 from backend.app import app as flask_app, db
-from backend.models import Servico
+from backend.models import Profissional, Servico
 
 
 @pytest.fixture(scope='session')
@@ -28,9 +28,17 @@ def setup_database(app):
             nome="Corte de Cabelo",
             descricao="Corte padrão",
             preco=50.0,
-            duracaoEmMinutos=30
+            duracaoEmMinutos=30,
+            especialidade="Cabeleireira"
         )
-        db.session.add(servico_teste)
+        profissional_teste = Profissional(
+            id=1,
+            nome="Julia Maria",
+            especialidade="Cabeleireira",
+            tel="21988888888",
+            horarios="10:00,14:00"
+        )
+        db.session.add_all([servico_teste, profissional_teste])
         db.session.commit()
 
         yield
@@ -87,3 +95,76 @@ def test_criar_agendamento_conflito_horario(client):
     # Segundo agendamento no mesmo horário deve ser bloqueado
     res2 = client.post('/agendamentos', json=dados)
     assert res2.status_code in [400, 409]
+
+
+def test_agendamento_fora_dos_horarios_do_profissional(client):
+    """O horário precisa estar na lista de horários do profissional."""
+    dados = {
+        "cliente_id": 1,
+        "profissional_id": 1,
+        "servico_id": 1,
+        "dataHora": "2026-10-10T16:00:00"
+    }
+
+    response = client.post('/agendamentos', json=dados)
+
+    assert response.status_code == 400
+    assert "não atende nesse horário" in response.json["erro"]
+
+
+def test_agendamento_especialidade_diferente(client):
+    """Um serviço só pode ser agendado com profissional da mesma especialidade."""
+    client.post('/servicos', json={
+        "nome": "Manicure Simples",
+        "preco": 45.0,
+        "duracaoEmMinutos": 60,
+        "especialidade": "Manicure"
+    })
+
+    dados = {
+        "cliente_id": 1,
+        "profissional_id": 1,
+        "servico_id": 2,
+        "dataHora": "2026-10-10T10:00:00"
+    }
+
+    response = client.post('/agendamentos', json=dados)
+
+    assert response.status_code == 400
+    assert "não realiza esse serviço" in response.json["erro"]
+
+
+def test_cadastrar_profissional_com_horarios(client):
+    """Os horários são validados, ordenados e devolvidos como lista."""
+    response = client.post('/profissionais', json={
+        "nome": "Carla Souza",
+        "especialidade": "Pedicure",
+        "tel": "21977777777",
+        "horarios": "16:30, 08:00,13:00"
+    })
+    assert response.status_code == 201
+
+    profissionais = client.get('/profissionais').json
+    carla = next(p for p in profissionais if p["nome"] == "Carla Souza")
+    assert carla["horarios"] == ["08:00", "13:00", "16:30"]
+
+
+def test_cadastrar_profissional_horario_invalido(client):
+    response = client.post('/profissionais', json={
+        "nome": "Carla Souza",
+        "especialidade": "Pedicure",
+        "horarios": "8h"
+    })
+
+    assert response.status_code == 400
+    assert "Horário inválido" in response.json["erro"]
+
+
+def test_cadastrar_servico_sem_especialidade(client):
+    response = client.post('/servicos', json={
+        "nome": "Hidratação",
+        "preco": 90.0,
+        "duracaoEmMinutos": 60
+    })
+
+    assert response.status_code == 400

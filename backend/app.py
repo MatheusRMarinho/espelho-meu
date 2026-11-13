@@ -14,6 +14,42 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 CORS(app)
 
+
+def normalizar_horarios(valor):
+    """Recebe horários como lista ou texto ("09:00, 14:00") e devolve "09:00,14:00" ordenado."""
+    if isinstance(valor, str):
+        valor = valor.split(',')
+    if not isinstance(valor, list):
+        raise ValueError("Informe os horários como lista ou texto separado por vírgula.")
+
+    horarios = set()
+    for item in valor:
+        item = str(item).strip()
+        if not item:
+            continue
+        try:
+            horarios.add(datetime.strptime(item, '%H:%M').strftime('%H:%M'))
+        except ValueError:
+            raise ValueError(f"Horário inválido: '{item}'. Use o formato HH:MM.")
+
+    if not horarios:
+        raise ValueError("Informe pelo menos um horário de atendimento.")
+    return ','.join(sorted(horarios))
+
+
+def mesma_especialidade(a, b):
+    return (a or '').strip().lower() == (b or '').strip().lower()
+
+
+def profissional_json(p):
+    return {
+        "id": p.id,
+        "nome": p.nome,
+        "especialidade": p.especialidade,
+        "tel": p.tel,
+        "horarios": p.lista_horarios()
+    }
+
 # rotas cliente
 @app.route('/clientes', methods=['POST'])
 def cadastrar_cliente():
@@ -60,12 +96,20 @@ def login():
 # rotas profissional
 @app.route('/profissionais', methods=['POST'])
 def cadastrar_profissional():
-    dados = request.get_json()
+    dados = request.get_json(silent=True) or {}
+    if not dados.get('nome') or not str(dados.get('especialidade', '')).strip():
+        return jsonify({"erro": "Campos obrigatórios: nome, especialidade, horarios"}), 400
+    try:
+        horarios = normalizar_horarios(dados.get('horarios', ''))
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+
     try:
         novo_profissional = Profissional(
             nome=dados['nome'],
-            especialidade=dados.get('especialidade', ''),
-            tel=dados.get('tel', '')
+            especialidade=dados['especialidade'].strip(),
+            tel=dados.get('tel', ''),
+            horarios=horarios
         )
         db.session.add(novo_profissional)
         db.session.commit()
@@ -77,19 +121,21 @@ def cadastrar_profissional():
 @app.route('/profissionais', methods=['GET'])
 def listar_profissionais():
     profissionais = Profissional.query.all()
-    resultado = [{"id": p.id, "nome": p.nome, "especialidade": p.especialidade, "tel": p.tel} for p in profissionais]
-    return jsonify(resultado), 200
+    return jsonify([profissional_json(p) for p in profissionais]), 200
 
 # rotas serviço
 @app.route('/servicos', methods=['POST'])
 def cadastrar_servico():
-    dados = request.get_json()
+    dados = request.get_json(silent=True) or {}
+    if not str(dados.get('especialidade', '')).strip():
+        return jsonify({"erro": "Informe a especialidade do serviço."}), 400
     try:
         novo_servico = Servico(
             nome=dados['nome'],
             descricao=dados.get('descricao', ''),
             preco=dados['preco'],
-            duracaoEmMinutos=dados['duracaoEmMinutos']
+            duracaoEmMinutos=dados['duracaoEmMinutos'],
+            especialidade=dados['especialidade'].strip()
         )
         db.session.add(novo_servico)
         db.session.commit()
@@ -107,7 +153,8 @@ def listar_servicos():
             "nome": s.nome, 
             "descricao": s.descricao, 
             "preco": str(s.preco), 
-            "duracaoEmMinutos": s.duracaoEmMinutos
+            "duracaoEmMinutos": s.duracaoEmMinutos,
+            "especialidade": s.especialidade
         } for s in servicos
     ]
     return jsonify(resultado), 200
@@ -133,6 +180,16 @@ def criar_agendamento():
     servico = db.session.get(Servico, servico_id)
     if not servico:
         return jsonify({"erro": "Serviço não encontrado."}), 404
+
+    profissional = db.session.get(Profissional, profissional_id)
+    if not profissional:
+        return jsonify({"erro": "Profissional não encontrado."}), 404
+
+    if not mesma_especialidade(servico.especialidade, profissional.especialidade):
+        return jsonify({"erro": "Este profissional não realiza esse serviço."}), 400
+
+    if data_hora_inicio.strftime('%H:%M') not in profissional.lista_horarios():
+        return jsonify({"erro": "O profissional não atende nesse horário."}), 400
 
     data_hora_fim = data_hora_inicio + timedelta(minutes=servico.duracaoEmMinutos)
 

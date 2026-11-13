@@ -29,6 +29,11 @@ class Profissional(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     especialidade = db.Column(db.String(100))
     tel = db.Column(db.String(20)) # Ajustado para bater com o diagrama
+    # Horários de atendimento do profissional, separados por vírgula (ex: "09:00,10:00,14:00")
+    horarios = db.Column(db.String(255), nullable=False, default='')
+
+    def lista_horarios(self):
+        return [h for h in (self.horarios or '').split(',') if h]
 
     def __repr__(self):
         return f"<Profissional {self.nome} - {self.especialidade}>"
@@ -41,6 +46,8 @@ class Servico(db.Model):
     descricao = db.Column(db.String(255))
     preco = db.Column(db.Numeric(10, 2), nullable=False)
     duracaoEmMinutos = db.Column(db.Integer, nullable=False) # Ajustado para bater com o diagrama
+    # Só profissionais com a mesma especialidade podem realizar o serviço
+    especialidade = db.Column(db.String(100), nullable=False)
 
     def __repr__(self):
         return f"<Servico {self.nome}>"

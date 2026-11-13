@@ -51,9 +51,14 @@
                         <label class="form-label fw-bold small">Especialidade</label>
                         <input type="text" id="prof-esp" class="form-control" placeholder="Ex: Design de Sobrancelhas" required>
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label fw-bold small">Telefone</label>
                         <input type="text" id="prof-tel" class="form-control" placeholder="Ex: 21999998888" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small">Horários de atendimento</label>
+                        <input type="text" id="prof-horarios" class="form-control" placeholder="Ex: 09:00, 10:00, 14:00, 16:00" required>
+                        <div class="form-text">Separe os horários por vírgula, no formato HH:MM.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 fw-bold">Salvar Profissional</button>
                 </form>
@@ -68,6 +73,12 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Nome do Serviço</label>
                         <input type="text" id="serv-nome" class="form-control" placeholder="Ex: Hidratação Profunda" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Especialidade</label>
+                        <input type="text" id="serv-esp" class="form-control" list="lista-especialidades" placeholder="Ex: Cabeleireira" required>
+                        <datalist id="lista-especialidades"></datalist>
+                        <div class="form-text">Só profissionais dessa especialidade poderão realizar o serviço.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Descrição</label>
@@ -128,10 +139,18 @@
                 const ulProf = document.getElementById('lista-profissionais');
                 ulProf.innerHTML = profs.map(p => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div><strong>${p.nome}</strong> <span class="text-muted small">(${p.especialidade})</span></div>
+                        <div>
+                            <strong>${p.nome}</strong> <span class="text-muted small">(${p.especialidade})</span>
+                            <div class="small text-muted">🕒 ${p.horarios.length ? p.horarios.join(', ') : 'Sem horários'}</div>
+                        </div>
                         <span class="badge bg-secondary">${p.tel}</span>
                     </li>`
                 ).join('');
+
+                // Sugere as especialidades já cadastradas no formulário de serviço
+                const especialidades = [...new Set(profs.map(p => p.especialidade).filter(Boolean))];
+                document.getElementById('lista-especialidades').innerHTML =
+                    especialidades.map(e => `<option value="${e}">`).join('');
             }
 
             if (resServ.ok) {
@@ -139,7 +158,7 @@
                 const ulServ = document.getElementById('lista-servicos');
                 ulServ.innerHTML = servs.map(s => 
                     `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
-                        <div><strong>${s.nome}</strong> <span class="text-muted small">(${s.duracaoEmMinutos} min)</span></div>
+                        <div><strong>${s.nome}</strong> <span class="text-muted small">(${s.especialidade} · ${s.duracaoEmMinutos} min)</span></div>
                         <span class="badge bg-success">R$ ${Number(s.preco).toFixed(2)}</span>
                     </li>`
                 ).join('');
@@ -154,7 +173,8 @@
         const payload = {
             nome: document.getElementById('prof-nome').value,
             especialidade: document.getElementById('prof-esp').value,
-            tel: document.getElementById('prof-tel').value
+            tel: document.getElementById('prof-tel').value,
+            horarios: document.getElementById('prof-horarios').value
         };
 
         try {
@@ -169,7 +189,8 @@
                 e.target.reset();
                 carregarListas();
             } else {
-                alert('Erro ao cadastrar profissional.');
+                const retorno = await res.json().catch(() => ({}));
+                alert('Erro ao cadastrar profissional: ' + (retorno.erro || 'verifique os dados.'));
             }
         } catch (erro) {
             alert('Erro de conexão com o servidor.');
@@ -182,7 +203,8 @@
             nome: document.getElementById('serv-nome').value,
             descricao: document.getElementById('serv-desc').value,
             preco: parseFloat(document.getElementById('serv-preco').value),
-            duracaoEmMinutos: parseInt(document.getElementById('serv-duracao').value)
+            duracaoEmMinutos: parseInt(document.getElementById('serv-duracao').value),
+            especialidade: document.getElementById('serv-esp').value
         };
 
         try {
@@ -197,7 +219,8 @@
                 e.target.reset();
                 carregarListas();
             } else {
-                alert('Erro ao cadastrar serviço.');
+                const retorno = await res.json().catch(() => ({}));
+                alert('Erro ao cadastrar serviço: ' + (retorno.erro || 'verifique os dados.'));
             }
         } catch (erro) {
             alert('Erro de conexão com o servidor.');
