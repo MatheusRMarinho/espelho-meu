@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Espelho Meu - Consulta de Horários Disponíveis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+        }
+        .filter-card, .prof-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+        }
+        .slot-btn {
+            min-width: 92px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand navbar-dark bg-dark py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold fs-4" href="index.html">🪞 Espelho Meu</a>
+        <div class="d-flex">
+            <a href="admin.html" id="btn-nav-admin" class="btn btn-warning fw-bold me-3 px-4 d-none">⚙️ Painel Admin</a>
+            <a href="index.html" class="btn btn-outline-light me-3 px-4">Agendar</a>
+            <a href="agenda.html" class="btn btn-outline-light me-3 px-4">Minha Agenda</a>
+            <a href="login.html" class="btn btn-light fw-bold px-4">👤 Entrar / Sair</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5 flex-grow-1">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold m-0">Consulta de Horários Disponíveis</h2>
+            <p class="text-muted m-0">Filtre por data, especialidade ou profissional para visualizar a agenda livre.</p>
+        </div>
+        <a href="index.html" class="btn btn-outline-secondary fw-semibold px-4">
+            ← Voltar ao Início
+        </a>
+    </div>
+
+    <!-- Barra de Filtros -->
+    <div class="filter-card p-4 shadow-sm mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filtro-data" class="form-label fw-bold small text-dark">1. Data da Consulta</label>
+                <input type="date" id="filtro-data" class="form-control">
+            </div>
+
+            <div class="col-md-3">
+                <label for="filtro-especialidade" class="form-label fw-bold small text-dark">2. Especialidade</label>
+                <select id="filtro-especialidade" class="form-select">
+                    <option value="">Todas as especialidades</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label for="filtro-profissional" class="form-label fw-bold small text-dark">3. Profissional</label>
+                <select id="filtro-profissional" class="form-select">
+                    <option value="">Todos os profissionais</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <button id="btn-atualizar" type="button" class="btn btn-primary w-100 fw-bold">
+                    🔍 Buscar
+                </button>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="somente-livres" checked>
+                <label class="form-check-label small fw-semibold text-muted" for="somente-livres">
+                    Mostrar apenas horários disponíveis
+                </label>
+            </div>
+            <span id="resumo-disponibilidade" class="badge bg-primary fs-6">Carregando...</span>
+        </div>
+    </div>
+
+    <!-- Lista de Resultados -->
+    <div id="resultado-horarios">
+        <div class="p-5 bg-white rounded shadow-sm text-center text-muted">
+            Consultando horários disponíveis...
+        </div>
+    </div>
+</div>
+
+<footer class="bg-white border-top py-4 mt-5 text-center text-muted">
+    <div class="container">
+        <small>© 2026 Espelho Meu - Sistema de Agendamento. Projeto GPMS.</small>
+    </div>
+</footer>
+
+<script>
+    let todosProfissionais = [];
+    let todosServicos = [];
+
+    function mesmaEspecialidade(a, b) {
+        return (a || '').trim().toLowerCase() === (b || '').trim().toLowerCase();
+    }
+
+    function obterDataHojeLocal() {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const dia = String(agora.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (localStorage.getItem('is_admin') === 'true') {
+            document.getElementById('btn-nav-admin').classList.remove('d-none');
+        }
+
+        const inputData = document.getElementById('filtro-data');
+        const hoje = obterDataHojeLocal();
+        inputData.value = hoje;
+        inputData.min = hoje;
+
+        await carregarDadosBase();
+        await consultarDisponibilidade();
+
+        inputData.addEventListener('change', consultarDisponibilidade);
+        document.getElementById('filtro-especialidade').addEventListener('change', () => {
+            atualizarSelectProfissionais();
+            consultarDisponibilidade();
+        });
+        document.getElementById('filtro-profissional').addEventListener('change', consultarDisponibilidade);
+        document.getElementById('somente-livres').addEventListener('change', consultarDisponibilidade);
+        document.getElementById('btn-atualizar').addEventListener('click', consultarDisponibilidade);
+    });
+
+    async function carregarDadosBase() {
+        try {
+            const [resProf, resServ] = await Promise.all([
+                fetch('http://localhost:5000/profissionais'),
+                fetch('http://localhost:5000/servicos')
+            ]);
+
+            if (resProf.ok) {
+                // Considera apenas profissionais com grade de horários cadastrada
+                todosProfissionais = (await resProf.json()).filter(p => p.horarios && p.horarios.length > 0);
+            }
+            if (resServ.ok) {
+                todosServicos = await resServ.json();
+            }
+
+            popularEspecialidades();
+            atualizarSelectProfissionais();
+        } catch (erro) {
+            console.error('Erro ao carregar dados iniciais:', erro);
+        }
+    }
+
+    function popularEspecialidades() {
+        const selectEsp = document.getElementById('filtro-especialidade');
+        const especialidades = [...new Set(todosProfissionais.map(p => p.especialidade).filter(Boolean))];
+
+        selectEsp.innerHTML = '<option value="">Todas as especialidades</option>';
+        especialidades.forEach(esp => {
+            selectEsp.innerHTML += `<option value="${esp}">${esp}</option>`;
+        });
+    }
+
+    function atualizarSelectProfissionais() {
+        const espSelecionada = document.getElementById('filtro-especialidade').value;
+        const selectProf = document.getElementById('filtro-profissional');
+
+        const filtrados = espSelecionada
+            ? todosProfissionais.filter(p => mesmaEspecialidade(p.especialidade, espSelecionada))
+            : todosProfissionais;
+
+        selectProf.innerHTML = '<option value="">Todos os profissionais</option>';
+        filtrados.forEach(p => {
+            selectProf.innerHTML += `<option value="${p.id}">${p.nome} (${p.especialidade})</option>`;
+        });
+    }
+
+    async function consultarDisponibilidade() {
+        const container = document.getElementById('resultado-horarios');
+        const resumoBadge = document.getElementById('resumo-disponibilidade');
+        const dataEscolhida = document.getElementById('filtro-data').value;
+        const espFiltro = document.getElementById('filtro-especialidade').value;
+        const profFiltro = document.getElementById('filtro-profissional').value;
+        const somenteLivres = document.getElementById('somente-livres').checked;
+
+        if (!dataEscolhida) {
+            container.innerHTML = '<div class="p-4 bg-white rounded shadow-sm text-center text-warning fw-semibold">Selecione uma data para consultar os horários.</div>';
+            return;
+        }
+
+        try {
+            const resAgenda = await fetch(`http://localhost:5000/agenda?data=${dataEscolhida}`);
+            if (!resAgenda.ok) {
+                const err = await resAgenda.json().catch(() => ({}));
+                container.innerHTML = `<div class="p-4 bg-white rounded shadow-sm text-center text-danger">${err.erro || 'Não foi possível consultar a agenda.'}</div>`;
+                return;
+            }
+
+            const agendamentosDia = await resAgenda.json();
+
+            // Aplica filtros de especialidade e profissional
+            let profissionaisFiltrados = todosProfissionais;
+            if (espFiltro) {
+                profissionaisFiltrados = profissionaisFiltrados.filter(p => mesmaEspecialidade(p.especialidade, espFiltro));
+            }
+            if (profFiltro) {
+                profissionaisFiltrados = profissionaisFiltrados.filter(p => String(p.id) === String(profFiltro));
+            }
+
+            if (profissionaisFiltrados.length === 0) {
+                resumoBadge.innerText = '0 horários livres';
+                container.innerHTML = '<div class="p-5 bg-white rounded shadow-sm text-center text-muted">Nenhum profissional encontrado para os filtros selecionados.</div>';
+                return;
+            }
+
+            let totalHorariosLivres = 0;
+            let htmlCards = '';
+
+            profissionaisFiltrados.forEach(prof => {
+                // Filtra agendamentos ativos do profissional na data (mesma regra do index.html)
+                const ativos = agendamentosDia.filter(a =>
+                    a.status !== 'Cancelado' && String(a.profissional.id) === String(prof.id)
+                );
+
+                const horariosOrdenados = [...prof.horarios].sort();
+                const statusSlots = horariosOrdenados.map(horaStr => {
+                    const [hBtn, mBtn] = horaStr.split(':').map(Number);
+                    const minutosBtn = hBtn * 60 + mBtn;
+
+                    const estaOcupado = ativos.some(ag => {
+                        const horaInicioStr = ag.dataHora.substring(11, 16);
+                        const [hIni, mIni] = horaInicioStr.split(':').map(Number);
+                        const inicioMin = hIni * 60 + mIni;
+                        const fimMin = inicioMin + (ag.servico.duracaoEmMinutos || 60);
+                        return minutosBtn >= inicioMin && minutosBtn < fimMin;
+                    });
+
+                    return { hora: horaStr, ocupado: estaOcupado };
+                });
+
+                const qtdLivres = statusSlots.filter(s => !s.ocupado).length;
+                totalHorariosLivres += qtdLivres;
+
+                const slotsParaExibir = somenteLivres
+                    ? statusSlots.filter(s => !s.ocupado)
+                    : statusSlots;
+
+                // Lista resumida dos serviços oferecidos na especialidade
+                const servicosProf = todosServicos.filter(s => mesmaEspecialidade(s.especialidade, prof.especialidade));
+                const textoServicos = servicosProf.length
+                    ? servicosProf.map(s => `${s.nome} (R$ ${Number(s.preco).toFixed(2)} · ${s.duracaoEmMinutos} min)`).join(' • ')
+                    : 'Nenhum serviço vinculado a esta especialidade';
+
+                let botoesHtml = '';
+                if (slotsParaExibir.length === 0) {
+                    botoesHtml = '<span class="text-muted fst-italic small">Nenhum horário disponível nesta data.</span>';
+                } else {
+                    botoesHtml = slotsParaExibir.map(slot => {
+                        if (slot.ocupado) {
+                            return `<button type="button" class="btn btn-light border text-muted btn-sm slot-btn" disabled title="Horário já reservado">
+                                        ${slot.hora} (Ocupado)
+                                    </button>`;
+                        }
+                        return `<button type="button" class="btn btn-outline-success btn-sm slot-btn"
+                                    onclick="irParaAgendamento(${prof.id}, '${dataEscolhida}', '${slot.hora}')"
+                                    title="Clique para agendar este horário">
+                                    🕒 ${slot.hora}
+                                </button>`;
+                    }).join('');
+                }
+
+                const badgeDisponibilidade = qtdLivres > 0
+                    ? `<span class="badge bg-success">${qtdLivres} horário(s) livre(s)</span>`
+                    : `<span class="badge bg-secondary">Agenda lotada</span>`;
+
+                htmlCards += `
+                    <div class="prof-card p-4 shadow-sm mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                            <div>
+                                <h4 class="fw-bold mb-1">${prof.nome}</h4>
+                                <span class="badge bg-primary me-2">${prof.especialidade}</span>
+                                <small class="text-muted">📞 ${prof.tel}</small>
+                            </div>
+                            ${badgeDisponibilidade}
+                        </div>
+
+                        <p class="small text-muted mb-3">
+                            <strong>Serviços:</strong> ${textoServicos}
+                        </p>
+
+                        <div class="pt-3 border-top">
+                            <div class="small fw-bold text-dark mb-2">Horários em ${dataEscolhida.split('-').reverse().join('/')}:</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                ${botoesHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resumoBadge.innerText = `${totalHorariosLivres} horário(s) livre(s) encontrado(s)`;
+            container.innerHTML = htmlCards;
+        } catch (erro) {
+            console.error('Erro ao consultar disponibilidade:', erro);
+            resumoBadge.innerText = 'Erro de conexão';
+            container.innerHTML = '<div class="p-4 bg-white rounded shadow-sm text-center text-danger">Erro ao conectar com o servidor. Verifique se a API está rodando.</div>';
+        }
+    }
+
+    function irParaAgendamento(profId, data, hora) {
+        // Salva a pré-seleção caso queira aproveitar no index.html e redireciona
+        localStorage.setItem('pre_selecao_agendamento', JSON.stringify({
+            profissional_id: profId,
+            data: data,
+            hora: hora
+        }));
+        window.location.href = 'index.html';
+    }
+</script>
+</body>
+</html>
